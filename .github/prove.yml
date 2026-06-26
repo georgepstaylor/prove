@@ -1,0 +1,35 @@
+# prove configuration — which PRs may be auto-approved. See README.md for details.
+
+mode: enforce    # enforce: approve/dismiss + Check Run | dry_run: comment only, no action
+comment: false   # also comment on every PR explaining the decision
+
+# auto_merge:    # native auto-merge after approving (needs repo "Allow auto-merge")
+#   enabled: true
+#   method: squash
+
+# A PR is approved only if every changed path is covered by a rule whose `allow`
+# lists its author. paths are doublestar globs (trailing "/" = subtree); allow
+# entries are @user or @org/team handles.
+rules:
+  - paths: ["playground/alice/"]
+    allow: ["@alice"]
+  - paths: ["docs/", "*.md"]
+    allow: ["@org/writers"]
+
+  # Optional per-rule change-kind gate, detected from the diff. Every changed line
+  # in a matched file must qualify, else it goes to a human:
+  #   - paths: ["**/go.mod", "**/go.sum"]
+  #     allow: ["@dependabot[bot]"]
+  #     semver: [patch, minor]   # permit in-range version bumps
+  #   - paths: ["Dockerfile"]
+  #     allow: ["@renovate[bot]"]
+  #     sha: true                # permit pinned-SHA / digest updates
+
+# Always require a human, regardless of rules.
+protect:
+  dot_github: true   # the .github/ folder
+  config_file: true  # this file, so rules can't self-rewrite
+  paths: []          # extra globs, e.g. ["deploy/prod/"]
+
+blocked_users: []        # never auto-approved
+max_changed_files: 3000  # refuse PRs larger than this

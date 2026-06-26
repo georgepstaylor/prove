@@ -1,0 +1,15 @@
+# Binaries
+/prove
+/out/
+*.exe
+
+# Local secrets / keys
+*.pem
+.env
+
+# Test artifacts
+*.out
+coverage.txt
+
+# Deployment manifests (not tracked)
+/deploy/
