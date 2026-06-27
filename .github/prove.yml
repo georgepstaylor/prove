@@ -1,6 +1,7 @@
 # prove configuration — which PRs may be auto-approved. See README.md for details.
 
-mode: enforce    # enforce: approve/dismiss + Check Run | dry_run: comment only, no action
+enabled: true    # turn prove on/off for this repo (default on)
+dry_run: false   # when on, comment what it would do instead of acting
 comment: false   # also comment on every PR explaining the decision
 
 # auto_merge:    # native auto-merge after approving (needs repo "Allow auto-merge")

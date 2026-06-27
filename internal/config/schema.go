@@ -20,10 +20,14 @@ type Config struct {
 	// self-approved by anyone in its Allow list. A PR is auto-approved only when
 	// every changed path is covered by a rule allowing its author.
 	Rules []Rule `yaml:"rules"`
-	// Mode controls whether prove acts on its decision. See Mode.
-	Mode Mode `yaml:"mode"`
+	// Enabled turns prove on for the repo. Unset means on; set false as a per-repo
+	// kill switch.
+	Enabled *bool `yaml:"enabled"`
+	// DryRun, when true, makes prove comment what it would do without acting
+	// (no approve/dismiss/merge). Ignored when Enabled is false.
+	DryRun bool `yaml:"dry_run"`
 	// Comment, when true, posts a comment on every PR explaining why prove did or
-	// didn't approve. Independent of Mode. dry_run always comments regardless.
+	// didn't approve. Independent of DryRun, which always comments.
 	Comment bool `yaml:"comment"`
 	// Protect holds the guards that always require human review regardless of any
 	// rule.
@@ -52,24 +56,10 @@ type Protect struct {
 	Paths []string `yaml:"paths"`
 }
 
-// Mode controls whether prove acts on its decision.
-type Mode string
-
-const (
-	// ModeEnforce (the default) approves/dismisses and posts a Check Run.
-	ModeEnforce Mode = "enforce"
-	// ModeDryRun takes no action (no approve/dismiss/auto-merge); it only posts a
-	// comment describing what it *would* do. Use it to build trust before
-	// granting prove approval power.
-	ModeDryRun Mode = "dry_run"
-)
-
-// EffectiveMode returns Mode, defaulting to enforce when unset.
-func (c *Config) EffectiveMode() Mode {
-	if c.Mode == "" {
-		return ModeEnforce
-	}
-	return c.Mode
+// IsEnabled reports whether prove is active for the repo. Defaults to true when
+// unset.
+func (c *Config) IsEnabled() bool {
+	return c.Enabled == nil || *c.Enabled
 }
 
 // Rule grants self-approval of PRs confined to Paths to the principals in Allow,
@@ -157,11 +147,6 @@ func (c *Config) DotGithubProtected() bool {
 func (c *Config) Validate() error {
 	if c.MaxChangedFiles < 0 {
 		return fmt.Errorf("max_changed_files must be positive")
-	}
-	switch c.Mode {
-	case "", ModeEnforce, ModeDryRun:
-	default:
-		return fmt.Errorf("mode %q must be one of enforce, dry_run", c.Mode)
 	}
 	for i, r := range c.Rules {
 		if len(r.Paths) == 0 {

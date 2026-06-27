@@ -93,6 +93,24 @@ func TestValidateRejectsBadMergeMethod(t *testing.T) {
 	}
 }
 
+func TestEnabledDefaultsTrue(t *testing.T) {
+	c, err := Parse([]byte("rules:\n  - paths: [\"docs/\"]\n    allow: [\"@a\"]\n"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if !c.IsEnabled() {
+		t.Error("enabled should default to true when unset")
+	}
+
+	c, err = Parse([]byte("enabled: false\n"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if c.IsEnabled() {
+		t.Error("enabled: false should disable prove")
+	}
+}
+
 func TestValidateRejectsBadSemver(t *testing.T) {
 	_, err := Parse([]byte("rules:\n  - paths: [\"go.mod\"]\n    allow: [\"@dependabot[bot]\"]\n    semver: [hotfix]\n"))
 	if err == nil {

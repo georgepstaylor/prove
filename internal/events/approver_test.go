@@ -313,7 +313,7 @@ func TestApproverEnablesAutoMerge(t *testing.T) {
 func TestApproverDryRunCommentsInsteadOfApproving(t *testing.T) {
 	repo := &fakeRepo{
 		configFound: true,
-		configData:  []byte("mode: dry_run\nrules:\n  - paths: [\"playground/alice/\"]\n    allow: [\"@alice\"]\n"),
+		configData:  []byte("dry_run: true\nrules:\n  - paths: [\"playground/alice/\"]\n    allow: [\"@alice\"]\n"),
 		files:       cf("playground/alice/notes.md"),
 	}
 	if err := newApprover(repo).Process(context.Background(), "dr1", prEvent("opened", "alice", "sha1")); err != nil {
@@ -333,7 +333,7 @@ func TestApproverDryRunCommentsInsteadOfApproving(t *testing.T) {
 func TestApproverDryRunCommentsOnRefusal(t *testing.T) {
 	repo := &fakeRepo{
 		configFound: true,
-		configData:  []byte("mode: dry_run\nrules:\n  - paths: [\"docs/\"]\n    allow: [\"@carol\"]\n"),
+		configData:  []byte("dry_run: true\nrules:\n  - paths: [\"docs/\"]\n    allow: [\"@carol\"]\n"),
 		files:       cf("src/main.go"),
 	}
 	if err := newApprover(repo).Process(context.Background(), "dr2", prEvent("opened", "alice", "sha1")); err != nil {
@@ -364,20 +364,35 @@ func TestApproverCommentFlagApprovesAndComments(t *testing.T) {
 	}
 }
 
-func TestApproverEnforceDefaultDoesNotComment(t *testing.T) {
+func TestApproverActiveDefaultDoesNotComment(t *testing.T) {
 	repo := &fakeRepo{
 		configFound: true,
-		configData:  alicePlaygroundRule, // no mode (enforce), no comment flag
+		configData:  alicePlaygroundRule, // no enabled field (defaults to active), no comment flag
 		files:       cf("playground/alice/notes.md"),
 	}
 	if err := newApprover(repo).Process(context.Background(), "en1", prEvent("opened", "alice", "sha1")); err != nil {
 		t.Fatalf("Process: %v", err)
 	}
 	if !repo.approved {
-		t.Fatal("enforce mode should approve")
+		t.Fatal("active mode should approve")
 	}
 	if repo.commented {
 		t.Fatal("without comment flag prove should not comment")
+	}
+}
+
+func TestApproverDisabledDoesNothing(t *testing.T) {
+	// enabled: false — even a qualifying PR gets no approval, comment, or Check Run.
+	repo := &fakeRepo{
+		configFound: true,
+		configData:  []byte("enabled: false\nrules:\n  - paths: [\"playground/alice/\"]\n    allow: [\"@alice\"]\n"),
+		files:       cf("playground/alice/notes.md"),
+	}
+	if err := newApprover(repo).Process(context.Background(), "off1", prEvent("opened", "alice", "sha1")); err != nil {
+		t.Fatalf("Process: %v", err)
+	}
+	if repo.approved || repo.commented || repo.checkConclusion != "" {
+		t.Fatalf("disabled repo should take no action, got approved=%v commented=%v check=%q", repo.approved, repo.commented, repo.checkConclusion)
 	}
 }
 

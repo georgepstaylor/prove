@@ -155,6 +155,11 @@ func (a *Approver) evaluate(ctx context.Context, delivery string, installID int6
 		return client.UpsertCheck(ctx, owner, name, headSHA, "neutral", "Invalid prove config", summary)
 	}
 
+	if !cfg.IsEnabled() {
+		log.Info("prove disabled for this repo; skipping")
+		return nil
+	}
+
 	files, err := client.ListChangedFiles(ctx, owner, name, number, cfg.EffectiveMaxChangedFiles())
 	if err != nil {
 		a.metrics.IncError("list_files")
@@ -178,11 +183,11 @@ func (a *Approver) evaluate(ctx context.Context, delivery string, installID int6
 		log.Warn("check run failed", "err", err)
 	}
 
-	mode := cfg.EffectiveMode()
+	mode := "active"
 	action := "none"
 
-	switch mode {
-	case config.ModeDryRun:
+	if cfg.DryRun {
+		mode = "dry_run"
 		log.Info("dry run; commenting only", "would_approve", decision.Approve)
 		if err := client.UpsertComment(ctx, owner, name, number, commentMarker, renderComment(decision, true)); err != nil {
 			log.Warn("comment failed", "err", err)
@@ -190,7 +195,7 @@ func (a *Approver) evaluate(ctx context.Context, delivery string, installID int6
 			a.metrics.IncAction("commented")
 		}
 		action = "commented"
-	default:
+	} else {
 		action, err = a.act(ctx, client, cfg, pr, log, decision, owner, name, number, headSHA, botLogin)
 		if err != nil {
 			a.metrics.IncError("act")
@@ -207,7 +212,7 @@ func (a *Approver) evaluate(ctx context.Context, delivery string, installID int6
 
 	a.recordDecision(log, DecisionEvent{
 		Delivery: delivery, Repo: owner + "/" + name, Number: number, Author: author,
-		HeadSHA: headSHA, Mode: string(mode), Approve: decision.Approve,
+		HeadSHA: headSHA, Mode: mode, Approve: decision.Approve,
 		FailingCount: len(decision.FailingFiles), Action: action, DurationMs: time.Since(start).Milliseconds(),
 	})
 	return nil
@@ -423,7 +428,7 @@ func renderComment(d engine.Decision, dryRun bool) string {
 	}
 
 	if dryRun {
-		b.WriteString("\n_prove is in dry-run mode and took no action. Set `mode: enforce` in `.github/prove.yml` to enable auto-approval._")
+		b.WriteString("\n_prove is in dry-run mode and took no action. Set `enabled: true` in `.github/prove.yml` to enable auto-approval._")
 	}
 	return b.String()
 }

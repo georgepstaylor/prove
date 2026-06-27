@@ -12,7 +12,8 @@ Config is a list of rules. Each says: a PR confined to these `paths` may be self
 
 ```yaml
 # .github/prove.yml
-mode: enforce # enforce (act) | dry_run (comment only, take no action)
+enabled: true  # on/off for this repo (default on)
+dry_run: false # when on, comment what it would do instead of acting
 
 rules:
   - paths: ["docs/", "*.md"]
